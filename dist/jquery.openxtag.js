@@ -33,6 +33,7 @@
         'clickScript': 'ck.php',
         'charset': 'UTF-8',
         'zoneID': null,
+        'placeID': null,
         'target': undefined,
         'source': undefined,
         'blockcampaign': undefined, // bool option
@@ -325,7 +326,13 @@
                     var output = eval('(function () {' + data + ';return ' + thesettings['jsPrefix'] + 'output;})()');
                     that.each(function () {
                         var $this = $(this);
-                        _documentWriteSafeAppend(output[$this.data('openxtag')['zn']], $this);
+                        var metadata = {};
+                        if (typeof $.metadata != 'undefined') {
+                            metadata = $this.metadata();
+                        }
+                        var zone_content = parseForPlace(output[$this.data('openxtag')['zn']], metadata);
+
+                        _documentWriteSafeAppend(zone_content, $this);
                     });
                 });
             }
@@ -334,6 +341,61 @@
         return chainObj;
     };
     /// }}} spcTag
+
+    /**
+     * placeID (1 - горизонтальный блок, 2 - вертикальный левый блок, 3 - горизонтальный длинный баннер)
+     * @param markup
+     * @param metadata
+     * @return {*}
+     */
+    function parseForPlace(markup, metadata) {
+        var container = $(markup);
+
+        var data = {
+            'url': $(container[0]).attr('href'),
+            'img_src': $('img', $(container[0])).attr('src'),
+            'title': /<br>(.*)$/i.exec($(container[0]).html()),
+            'text': $(container[2]).html(),
+            'phone': $(container[4]).html(),
+            'sales_name': $(container[6]).html()
+        };
+
+        switch(metadata.placeID) {
+            case 1:
+                var template =
+                    '<div class="photo" style="width: 146px; height: 108px;">'
+                        +'<noindex><a href="{url}">'
+                            +'<img src="{img_src}" alt="agrealt" width="146" height="108" />'
+                            +'<div class="nb_overlay"><div class="p_tl"></div><div class="p_tr"></div><div class="p_bl"></div><div class="p_br"></div><div class="p_tb"></div><div class="p_bb"></div><div class="p_lb"></div><div class="p_rb"></div></div>'
+                        +'</noindex></a>'
+                    +'</div>'
+                    +'<h5><noindex><a href="{url}">{title}</a></noindex></h5>'
+                    +'<div class="text">{text}'
+                        +'<div style="padding-top: 5px;">{phone}</div>'
+                        +'<div><noindex><a href="{url}">{sales_name}</a></noindex></div>'
+                    +'</div>';
+                break;
+            case 2:
+                var template =
+                    '<h5><a href="{url}">{title}</a></h5>'
+                    +'<div class="photo" id="photoOffer2">'
+                    +'<a href="{url}"><img src="{img_src}" alt="agrealt" width="146" height="108" />'
+                    +'<div class="nb_overlay"><div class="p_tl"></div><div class="p_tr"></div><div class="p_bl"></div><div class="p_br"></div><div class="p_tb"></div><div class="p_bb"></div><div class="p_lb"></div><div class="p_rb"></div></div></a></div>'
+                    +'<div class="text">{text}'
+                    +'<div class="fos_adr">{phone}<br /><a href="{url}">{sales_name}</a></div>'
+                +'</div>';
+                break;
+            case 3:
+                data = {'markup': markup};
+                var template = '<div class="central_hor">{markup}</div>';
+                break;
+            default:
+                var template = markup;
+                break;
+        }
+
+        return $.nano(template, data);
+    }
 
     function loadFlashObjectOnce(thesettings, callback) {
         if (typeof window['org'] != 'undefined' && 
